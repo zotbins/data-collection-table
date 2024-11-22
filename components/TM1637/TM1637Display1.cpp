@@ -23,6 +23,7 @@ extern "C" {
 #include <TM1637Display.h>
 // #include <Arduino.h>
 #include <driver/gpio.h>
+#include "esp_rom_sys.h" // Include this header for esp_rom_delay_us
 
 #define TM1637_I2C_COMM1    0x40
 #define TM1637_I2C_COMM2    0xC0
@@ -31,7 +32,7 @@ extern "C" {
 //
 //      A
 //     ---
-//  F |   | B
+//  F |   | B 
 //     -G-
 //  E |   | C
 //     ---
@@ -67,10 +68,19 @@ TM1637Display::TM1637Display(uint8_t pinClk, uint8_t pinDIO, unsigned int bitDel
 
 	// Set the pin direction and default value.
 	// Both pins are set as inputs, allowing the pull-up resistors to pull them up
-  pinMode(m_pinClk, INPUT);
-  pinMode(m_pinDIO,INPUT);
-	digitalWrite(m_pinClk, LOW);
-	digitalWrite(m_pinDIO, LOW);
+  //Changing code that would work in the Arduino IDE to ESP-IDF code
+  //pinMode(m_pinClk, INPUT);
+  //pinMode(m_pinDIO,INPUT);
+	//digitalWrite(m_pinClk, LOW);
+	//digitalWrite(m_pinDIO, LOW);
+
+  // Set the GPIO direction
+  gpio_set_direction((gpio_num_t)m_pinClk, GPIO_MODE_INPUT_OUTPUT);
+  gpio_set_direction((gpio_num_t)m_pinDIO, GPIO_MODE_INPUT_OUTPUT);
+
+  // Set initial levels
+  gpio_set_level((gpio_num_t)m_pinClk, 0);
+  gpio_set_level((gpio_num_t)m_pinDIO, 0);
 }
 
 void TM1637Display::setBrightness(uint8_t brightness, bool on)
@@ -179,28 +189,37 @@ void TM1637Display::showNumberBaseEx(int8_t base, uint16_t num, uint8_t dots, bo
 
 void TM1637Display::bitDelay()
 {
-	delayMicroseconds(m_bitDelay);
+	//delayMicroseconds(m_bitDelay); 
+  esp_rom_delay_us(m_bitDelay);
 }
 
 void TM1637Display::start()
 {
-  pinMode(m_pinDIO, OUTPUT);
+  //pinMode(m_pinDIO, OUTPUT);
+  //bitDelay();
+  gpio_set_level((gpio_num_t)m_pinDIO, 0);
   bitDelay();
 }
 
 void TM1637Display::stop()
 {
-	pinMode(m_pinDIO, OUTPUT);
-	bitDelay();
-	pinMode(m_pinClk, INPUT);
-	bitDelay();
-	pinMode(m_pinDIO, INPUT);
-	bitDelay();
+	//pinMode(m_pinDIO, OUTPUT);
+	//bitDelay();
+	//pinMode(m_pinClk, INPUT);
+	//bitDelay();
+	//pinMode(m_pinDIO, INPUT);
+	//bitDelay();
+  gpio_set_level((gpio_num_t)m_pinDIO, 0);
+  bitDelay();
+  gpio_set_level((gpio_num_t)m_pinClk, 1);
+  bitDelay();
+  gpio_set_level((gpio_num_t)m_pinDIO, 1);
+  bitDelay();
 }
 
 bool TM1637Display::writeByte(uint8_t b)
 {
-  uint8_t data = b;
+  /**uint8_t data = b;
 
   // 8 Data Bits
   for(uint8_t i = 0; i < 8; i++) {
@@ -238,6 +257,31 @@ bool TM1637Display::writeByte(uint8_t b)
 
   bitDelay();
   pinMode(m_pinClk, OUTPUT);
+  bitDelay();
+
+  return ack;*/
+
+  //Changed the code so that it works for the ESP-IDF
+  for (uint8_t i = 0; i < 8; i++) {
+    gpio_set_level((gpio_num_t)m_pinClk, 0); // Clock low
+    gpio_set_level((gpio_num_t)m_pinDIO, b & 0x01); // Set data bit
+    bitDelay();
+    gpio_set_level((gpio_num_t)m_pinClk, 1); // Clock high
+    bitDelay();
+    b >>= 1;
+  }
+
+    // Acknowledge bit
+  gpio_set_level((gpio_num_t)m_pinClk, 0);
+  gpio_set_direction((gpio_num_t)m_pinDIO, GPIO_MODE_INPUT); // Release the DIO line
+  bitDelay();
+  gpio_set_level((gpio_num_t)m_pinClk, 1);
+  bitDelay();
+  bool ack = !gpio_get_level((gpio_num_t)m_pinDIO);
+  gpio_set_direction((gpio_num_t)m_pinDIO, GPIO_MODE_OUTPUT);
+  gpio_set_level((gpio_num_t)m_pinDIO, 0);
+  bitDelay();
+  gpio_set_level((gpio_num_t)m_pinClk, 0);
   bitDelay();
 
   return ack;
