@@ -27,6 +27,7 @@
 #include <sys/param.h>
 
 #include "../components/CheckButtonPressed/include/CheckButtonPressed.hpp"
+#include "../components/TM1637/include/TM1637Display.h"
 // #include "CheckButtonPressed.hpp"
 
 #define WIFI_SSID      "UCInet Mobile Access"   //or  or VDCNorte-MyCampusNet
@@ -64,6 +65,11 @@
 #define I2C_MASTER_SDA_IO           5      /*!< GPIO number used for I2C master data  */
 #define I2C_MASTER_NUM              0      /*!< I2C master i2c port number, the number of i2c peripheral interfaces available will depend on the chip */
 #define I2C_MASTER_FREQ_HZ          100000 /*!< I2C master clock frequency */
+
+#define DISPLAY_CLK 3
+#define DISPLAY_DIO 1
+TM1637Display display(DISPLAY_CLK, DISPLAY_DIO);
+
 
 static const char *TAG = "wifi_station";
 static EventGroupHandle_t s_wifi_event_group;
@@ -479,7 +485,7 @@ void print_mac_address() {
 
 extern "C" void app_main() {
     // Initialize the camera
-    TEST_ESP_OK(init_camera(20000000, PIXFORMAT_RGB565, FRAMESIZE_QVGA, 2, SIOD_GPIO_NUM, -1));
+    /*TEST_ESP_OK(init_camera(20000000, PIXFORMAT_RGB565, FRAMESIZE_QVGA, 2, SIOD_GPIO_NUM, -1));
 
     // Initialize NVS (non-volatile storage) flash memory
     esp_err_t ret = nvs_flash_init();
@@ -491,15 +497,19 @@ extern "C" void app_main() {
     // print_mac_address();
 
     // Initialize the Wi-Fi station
-    wifi_init_sta();
+    //wifi_init_sta();
 
     // Start the HTTP server to serve images
-    start_camera_server();
+    start_camera_server();*/
 
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay for 1 second
+    //Initialize the Display
+    ESP_LOGI("MAIN", "Running the main Method");
+
     QueueHandle_t messageQueue = xQueueCreate(10, sizeof(int)); // create a temp queue, size doesn't matter
+    ESP_LOGI("MAIN", "Stack has been created");
     assert(messageQueue != nullptr);
-
+    
+    ESP_LOGI("MAIN", "Trying to create the button");
     ButtonTask buttonTask(messageQueue);
     buttonTask.start();
 }
